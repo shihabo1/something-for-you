@@ -111,7 +111,9 @@
     .manual-panel.show { display: block; }
     .manual-panel p { margin: 0 0 11px; color: var(--setup-muted); font-size: 13px; line-height: 1.45; }
     .manual-grid { display: grid; gap: 9px; }
-    .manual-toggle { appearance: none; margin-top: 11px; padding: 0; border: 0; background: transparent; color: var(--setup-primary); font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+    .manual-toggle { appearance: none; display: flex; align-items: center; justify-content: center; width: 100%; min-height: 54px; margin-top: 13px; padding: 12px 18px; border: 1px solid var(--setup-border); border-radius: 14px 6px 14px 6px; background: color-mix(in srgb, var(--setup-primary) 13%, var(--setup-card)); color: var(--setup-primary); font: inherit; font-size: 16px; font-weight: 700; cursor: pointer; box-shadow: 0 7px 18px color-mix(in srgb, var(--setup-primary) 13%, transparent); }
+    .manual-toggle:active { transform: translateY(1px); box-shadow: none; }
+    .manual-toggle:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
     .passcode-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; }
     .passcode-note { color: var(--setup-muted); font-size: 12px; white-space: nowrap; }
     .setup-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 7px; }
@@ -124,6 +126,7 @@
     .upload-recovery { display: none; flex-wrap: wrap; gap: 9px; margin-top: 10px; }
     .upload-recovery.show { display: flex; }
     .upload-recovery .setup-button { min-height: 42px; padding: 9px 14px; font-size: 13px; }
+    .upload-recovery .setup-button.prominent { flex: 1 1 100%; min-height: 54px; background: var(--setup-primary); color: var(--setup-primary-ink); border-color: transparent; font-size: 16px; box-shadow: 0 8px 20px color-mix(in srgb, var(--setup-primary) 23%, transparent); }
     .generated-link { display: none; margin-top: 16px; padding: 14px; border-radius: 14px 6px 14px 6px; background: color-mix(in srgb, var(--setup-primary) 9%, var(--setup-card)); border: 1px solid var(--setup-border); }
     .generated-link.show { display: block; }
     .generated-link p { margin: 0 0 10px; color: var(--setup-muted); font-size: 13px; line-height: 1.5; }
@@ -259,10 +262,10 @@
               <span class="upload-copy"><strong id="uploadTitle">Tap + to add 3 or 4 photos</strong><small id="uploadHint">Choose them together from your gallery or files. Photos upload automatically.</small></span>
               <span class="upload-preview empty" id="uploadPreview" aria-live="polite"><span id="previewEmpty">Choose<br />photos</span></span>
             </div>
-            <p class="privacy-note"><strong>Privacy:</strong> Your photos will be uploaded to Catbox or, if needed, Uguu. Anyone who knows a photo link can view it.</p>
+            <p class="privacy-note"><strong>Privacy:</strong> Your photos will be uploaded to Catbox. Anyone who knows a photo link can view it.</p>
             <button class="manual-toggle" id="manualToggle" type="button">Use image links instead</button>
             <div class="manual-panel" id="manualPanel">
-              <p>If an upload fails, paste 3 or 4 direct image links here.</p>
+              <p>postimages.org e photo upload kore Direct link paste koro (account lage na)</p>
               <div class="manual-grid">
                 <input class="setup-input manual-url" type="url" inputmode="url" placeholder="Photo 1 URL" aria-label="Photo 1 URL" />
                 <input class="setup-input manual-url" type="url" inputmode="url" placeholder="Photo 2 URL" aria-label="Photo 2 URL" />
@@ -300,8 +303,8 @@
           </div>
           <p class="setup-status" id="setupStatus" role="status" aria-live="polite"></p>
           <div class="upload-recovery" id="uploadRecovery">
+            <button class="setup-button prominent" id="useLinksAfterFailure" type="button">Use image links instead</button>
             <button class="setup-button secondary" id="retryUpload" type="button">Retry photo upload</button>
-            <button class="setup-button secondary" id="useLinksAfterFailure" type="button">Use image links instead</button>
           </div>
           <div class="generated-link" id="generatedLink">
             <p>Your short gift link is ready. Copy it and send it in Messenger.</p>
@@ -428,7 +431,6 @@
     (function () {
       var SHARE_BASE = window.location.origin + window.location.pathname;
       var CATBOX_API = "https://catbox.moe/user/api.php";
-      var UGUU_API = "https://uguu.se/upload.php";
       var UPLOAD_TIMEOUT_MS = 25000;
       var DEFAULT_MESSAGE = "You make ordinary moments feel magical, and I’m so lucky to have you in my life. I hope every day brings you happiness, gentle surprises, and all the warmth your heart deserves.";
       var SECRET_PASSCODE = "1234";
@@ -751,36 +753,10 @@
           return url;
         });
       }
-      function uploadToUguu(file, position) {
-        var formData = new FormData();
-        formData.append("files[]", file, file.name || ("gift-photo-" + position + ".jpg"));
-        return fetchWithTimeout(UGUU_API, { method: "POST", body: formData }).then(function (response) {
-          if (!response.ok) throw new Error("Uguu upload failed");
-          return response.text();
-        }).then(function (value) {
-          var url = "";
-          try {
-            var payload = JSON.parse(value);
-            if (payload && Array.isArray(payload.files) && payload.files[0]) url = payload.files[0].url || payload.files[0].fileUrl || "";
-          } catch (error) {
-            url = value.trim();
-          }
-          try {
-            var parsed = new URL(url);
-            if (parsed.protocol !== "https:" || (parsed.hostname !== "uguu.se" && !parsed.hostname.endsWith(".uguu.se"))) throw new Error("Invalid host");
-          } catch (error) {
-            throw new Error("Uguu returned an invalid link");
-          }
-          return url;
-        });
-      }
       function uploadOnePhoto(file, position, total) {
         setupStatus.textContent = "Uploading photo " + position + "/" + total + " to Catbox...";
         uploadTitle.textContent = "Uploading photo " + position + "/" + total + "...";
-        return uploadToCatbox(file, position).catch(function () {
-          setupStatus.textContent = "Catbox could not upload photo " + position + ". Trying Uguu automatically...";
-          return uploadToUguu(file, position);
-        });
+        return uploadToCatbox(file, position);
       }
       function uploadSelectedPhotos(files) {
         if (files.length < 3 || files.length > 4) {
@@ -825,10 +801,10 @@
           uploadedUrls = [];
           renderPreview([]);
           photoProcessing = false;
-          setupStatus.textContent = "Automatic upload failed on both Catbox and Uguu. Retry the upload, or use image links instead.";
+          setupStatus.textContent = "Catbox upload failed. Use image links instead, or retry the upload.";
           setupStatus.classList.add("error");
           uploadTitle.textContent = "Photo upload failed";
-          uploadHint.textContent = "Both upload hosts were tried. Your photos were not added.";
+          uploadHint.textContent = "Your photos were not added. Use direct image links below.";
           uploadRecovery.classList.add("show");
           showManualPanel();
         });
