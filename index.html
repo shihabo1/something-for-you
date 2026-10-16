@@ -80,6 +80,9 @@
     .setup-optional { color: var(--setup-muted); font-size: 12px; font-weight: 500; }
     .setup-input, .setup-textarea { display: block; width: 100%; border: 1px solid var(--setup-border); border-radius: 12px 5px 12px 5px; background: var(--setup-field); color: var(--setup-ink); font: inherit; font-size: 16px; padding: 13px 14px; }
     .setup-input:focus, .setup-textarea:focus { border-color: var(--setup-primary); outline: 3px solid color-mix(in srgb, var(--setup-primary) 22%, transparent); }
+    .setup-input.input-error { border-color: #c53d61; outline: 3px solid color-mix(in srgb, #c53d61 18%, transparent); }
+    .field-help { margin: 8px 2px 0; color: var(--setup-muted); font-size: 12px; line-height: 1.55; overflow-wrap: anywhere; }
+    .field-help strong { color: var(--setup-ink); }
     .setup-textarea { min-height: 140px; line-height: 1.55; resize: vertical; }
     .letter-launch { appearance: none; display: inline-flex; align-items: center; justify-content: center; gap: 9px; width: 100%; min-height: 58px; padding: 13px 18px; border: 0; border-radius: 15px 6px 15px 6px; background: var(--setup-primary); color: var(--setup-primary-ink); font: inherit; font-size: 17px; font-weight: 700; cursor: pointer; box-shadow: 0 8px 20px color-mix(in srgb, var(--setup-primary) 23%, transparent); -webkit-tap-highlight-color: transparent; }
     .letter-launch:active { transform: translateY(1px); box-shadow: 0 4px 10px color-mix(in srgb, var(--setup-primary) 18%, transparent); }
@@ -251,6 +254,12 @@
         <p class="setup-intro">Add 3 or 4 photos, write your paragraph, then make a short gift link you can send in Messenger.</p>
         <form class="setup-card" id="setupForm" novalidate>
           <div class="setup-field">
+            <label class="setup-label" for="githubToken">GitHub Token <span class="setup-optional">(needed for photo upload)</span></label>
+            <input class="setup-input" id="githubToken" type="password" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="github_pat_…" aria-describedby="githubTokenHelp githubTokenSafety" />
+            <p class="field-help" id="githubTokenHelp"><strong>Get a token:</strong> github.com → Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate: repo ‘something-for-you’ select, Contents: Read and write.</p>
+            <p class="field-help" id="githubTokenSafety">For safety, the token stays only in this open page and is never added to the gift link.</p>
+          </div>
+          <div class="setup-field">
             <label class="setup-label" for="photoInput">Gift photos <span class="setup-optional">(3–4 photos)</span></label>
             <div class="upload-box">
               <div class="upload-action">
@@ -262,10 +271,10 @@
               <span class="upload-copy"><strong id="uploadTitle">Tap + to add 3 or 4 photos</strong><small id="uploadHint">Choose them together from your gallery or files. Photos upload automatically.</small></span>
               <span class="upload-preview empty" id="uploadPreview" aria-live="polite"><span id="previewEmpty">Choose<br />photos</span></span>
             </div>
-            <p class="privacy-note"><strong>Privacy:</strong> Your photos will be uploaded to Catbox. Anyone who knows a photo link can view it.</p>
+            <p class="privacy-note"><strong>Privacy:</strong> Photos upload to the public <strong>shihabo1/something-for-you</strong> GitHub repository. Anyone with a photo link can view it.</p>
             <button class="manual-toggle" id="manualToggle" type="button">Use image links instead</button>
             <div class="manual-panel" id="manualPanel">
-              <p>postimages.org e photo upload kore Direct link paste koro (account lage na)</p>
+              <p>Or paste 3 or 4 direct HTTPS image links below.</p>
               <div class="manual-grid">
                 <input class="setup-input manual-url" type="url" inputmode="url" placeholder="Photo 1 URL" aria-label="Photo 1 URL" />
                 <input class="setup-input manual-url" type="url" inputmode="url" placeholder="Photo 2 URL" aria-label="Photo 2 URL" />
@@ -430,8 +439,8 @@
   <script>
     (function () {
       var SHARE_BASE = window.location.origin + window.location.pathname;
-      var CATBOX_API = "https://catbox.moe/user/api.php";
-      var UPLOAD_TIMEOUT_MS = 25000;
+      var GITHUB_CONTENTS_BASE = "https://api.github.com/repos/shihabo1/something-for-you/contents/gift-photos/";
+      var UPLOAD_TIMEOUT_MS = 45000;
       var DEFAULT_MESSAGE = "You make ordinary moments feel magical, and I’m so lucky to have you in my life. I hope every day brings you happiness, gentle surprises, and all the warmth your heart deserves.";
       var SECRET_PASSCODE = "1234";
       var currentConfig = { v: 2, n: "", m: DEFAULT_MESSAGE, p: "1234", u: [] };
@@ -454,6 +463,7 @@
       var uploadRecovery = document.getElementById("uploadRecovery");
       var generatedLink = document.getElementById("generatedLink");
       var generatedValue = document.getElementById("generatedValue");
+      var githubToken = document.getElementById("githubToken");
       var photoInput = document.getElementById("photoInput");
       var uploadPreview = document.getElementById("uploadPreview");
       var uploadTitle = document.getElementById("uploadTitle");
@@ -736,27 +746,85 @@
           return response;
         }, function (error) {
           window.clearTimeout(timer);
-          if (error && error.name === "AbortError") throw new Error("Upload timed out after 25 seconds");
+          if (error && error.name === "AbortError") throw new Error("Upload timed out. Check your connection and try again.");
           throw error;
         });
       }
-      function uploadToCatbox(file, position) {
-        var formData = new FormData();
-        formData.append("reqtype", "fileupload");
-        formData.append("fileToUpload", file, file.name || ("gift-photo-" + position + ".jpg"));
-        return fetchWithTimeout(CATBOX_API, { method: "POST", body: formData }).then(function (response) {
-          if (!response.ok) throw new Error("Catbox upload failed");
-          return response.text();
-        }).then(function (value) {
-          var url = value.trim();
-          if (!/^https:\/\/files\.catbox\.moe\/[A-Za-z0-9._-]+$/.test(url)) throw new Error("Catbox returned an invalid link");
-          return url;
+      function blobToBase64(blob) {
+        return new Promise(function (resolve, reject) {
+          var reader = new FileReader();
+          reader.onload = function () {
+            var value = String(reader.result || "");
+            resolve(value.slice(value.indexOf(",") + 1));
+          };
+          reader.onerror = function () { reject(new Error("Could not read this photo.")); };
+          reader.readAsDataURL(blob);
         });
       }
-      function uploadOnePhoto(file, position, total) {
-        setupStatus.textContent = "Uploading photo " + position + "/" + total + " to Catbox...";
+      function photoAsJpegBase64(file) {
+        return new Promise(function (resolve, reject) {
+          var sourceUrl = URL.createObjectURL(file);
+          var image = new Image();
+          image.onload = function () {
+            try {
+              var maxSide = 1800;
+              var scale = Math.min(1, maxSide / Math.max(image.naturalWidth, image.naturalHeight));
+              var width = Math.max(1, Math.round(image.naturalWidth * scale));
+              var height = Math.max(1, Math.round(image.naturalHeight * scale));
+              var canvas = document.createElement("canvas");
+              canvas.width = width;
+              canvas.height = height;
+              var context = canvas.getContext("2d");
+              context.fillStyle = "#ffffff";
+              context.fillRect(0, 0, width, height);
+              context.drawImage(image, 0, 0, width, height);
+              URL.revokeObjectURL(sourceUrl);
+              canvas.toBlob(function (blob) {
+                if (!blob) { reject(new Error("Could not prepare this photo.")); return; }
+                blobToBase64(blob).then(resolve, reject);
+              }, "image/jpeg", 0.88);
+            } catch (error) {
+              URL.revokeObjectURL(sourceUrl);
+              reject(error);
+            }
+          };
+          image.onerror = function () {
+            URL.revokeObjectURL(sourceUrl);
+            reject(new Error("One selected photo could not be opened."));
+          };
+          image.src = sourceUrl;
+        });
+      }
+      function uploadToGitHub(file, position, batchTimestamp, token) {
+        var filename = batchTimestamp + "-" + position + ".jpg";
+        return photoAsJpegBase64(file).then(function (base64) {
+          return fetchWithTimeout(GITHUB_CONTENTS_BASE + encodeURIComponent(filename), {
+            method: "PUT",
+            headers: {
+              "Accept": "application/vnd.github+json",
+              "Authorization": "Bearer " + token,
+              "X-GitHub-Api-Version": "2022-11-28",
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ message: "Add gift photo " + position, content: base64 })
+          });
+        }).then(function (response) {
+          return response.json().catch(function () { return {}; }).then(function (data) {
+            if (!response.ok) {
+              var error = new Error("GitHub upload failed.");
+              error.status = response.status;
+              throw error;
+            }
+            var url = data && data.content && data.content.download_url;
+            if (!isSafeImageUrl(url)) throw new Error("GitHub did not return a usable photo link.");
+            return url;
+          });
+        });
+      }
+      function uploadOnePhoto(file, position, total, batchTimestamp, token) {
+        setupStatus.textContent = "Uploading photo " + position + "/" + total + "...";
         uploadTitle.textContent = "Uploading photo " + position + "/" + total + "...";
-        return uploadToCatbox(file, position);
+        return uploadToGitHub(file, position, batchTimestamp, token);
       }
       function uploadSelectedPhotos(files) {
         if (files.length < 3 || files.length > 4) {
@@ -773,6 +841,16 @@
             return;
           }
         }
+        var token = githubToken.value.trim();
+        if (!token) {
+          setupStatus.textContent = "Enter your GitHub token before choosing photos.";
+          setupStatus.classList.add("error");
+          githubToken.classList.add("input-error");
+          githubToken.focus();
+          photoInput.value = "";
+          return;
+        }
+        githubToken.classList.remove("input-error");
         lastSelectedFiles = files.slice();
         photoProcessing = true;
         uploadedUrls = [];
@@ -781,34 +859,47 @@
         setupStatus.classList.remove("error");
         var localPreviews = files.map(function (file) { return URL.createObjectURL(file); });
         renderPreview(localPreviews);
+        var batchTimestamp = Date.now();
         var sequence = Promise.resolve();
         files.forEach(function (file, index) {
           sequence = sequence.then(function () {
-            return uploadOnePhoto(file, index + 1, files.length).then(function (url) { uploadedUrls.push(url); });
+            return uploadOnePhoto(file, index + 1, files.length, batchTimestamp, token).then(function (url) { uploadedUrls.push(url); });
           });
         });
         sequence.then(function () {
           localPreviews.forEach(function (url) { URL.revokeObjectURL(url); });
           renderPreview(uploadedUrls);
-          uploadTitle.textContent = uploadedUrls.length + " photos uploaded";
+          uploadTitle.textContent = uploadedUrls.length + " photos uploaded to GitHub";
           uploadHint.textContent = "All photos are ready. Tap to replace them.";
           setupStatus.textContent = "All photos uploaded successfully.";
           manualUrls.forEach(function (input, index) { input.value = uploadedUrls[index] || ""; });
           uploadRecovery.classList.remove("show");
           photoProcessing = false;
-        }).catch(function () {
+        }).catch(function (error) {
           localPreviews.forEach(function (url) { URL.revokeObjectURL(url); });
           uploadedUrls = [];
           renderPreview([]);
           photoProcessing = false;
-          setupStatus.textContent = "Catbox upload failed. Use image links instead, or retry the upload.";
           setupStatus.classList.add("error");
           uploadTitle.textContent = "Photo upload failed";
-          uploadHint.textContent = "Your photos were not added. Use direct image links below.";
+          uploadHint.textContent = "Check the token, retry, or use direct image links below.";
           uploadRecovery.classList.add("show");
-          showManualPanel();
+          if (error && (error.status === 401 || error.status === 403 || error.status === 404)) {
+            setupStatus.textContent = "GitHub token is invalid, expired, or missing Contents: Read and write access for ‘something-for-you’. Check the token and try again.";
+            githubToken.classList.add("input-error");
+            githubToken.focus();
+          } else {
+            setupStatus.textContent = (error && error.message ? error.message : "GitHub photo upload failed.") + " Retry or use image links instead.";
+          }
         });
       }
+      githubToken.addEventListener("input", function () {
+        githubToken.classList.remove("input-error");
+        if (setupStatus.textContent.indexOf("GitHub token") === 0 || setupStatus.textContent.indexOf("Enter your GitHub token") === 0) {
+          setupStatus.textContent = "";
+          setupStatus.classList.remove("error");
+        }
+      });
       photoInput.addEventListener("change", function () {
         if (photoInput.files && photoInput.files.length) uploadSelectedPhotos(Array.prototype.slice.call(photoInput.files));
       });
