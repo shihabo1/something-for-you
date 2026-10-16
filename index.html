@@ -1,0 +1,951 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="color-scheme" content="light dark" />
+  <meta name="theme-color" content="#8f52cb" />
+  <link rel="icon" href="data:," />
+  <title>Something for you</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Pacifico&display=swap');
+    :root {
+      color-scheme: light dark;
+      --lock: #9b8afb; --ink: #ffffff; --muted: rgba(255,255,255,.82);
+      --key: #ffffff; --key-hover: #fff8fb; --key-ink: #751f3a; --focus: #ffd84d;
+      --heart: #ef476f; --heart-dark: #d94485; --page: #fff6f8; --page-ink: #562642; --page-muted: #7a4b64;
+      --paper: rgba(255,255,255,.76); --paper-border: rgba(130,65,100,.13); --accent-violet: #7e53c9; --gold: #f7bc57;
+      --setup-bg: #fff6f8; --setup-card: #ffffff; --setup-ink: #562642; --setup-muted: #7a4b64; --setup-field: #fffafd; --setup-border: #e7cbd8; --setup-primary: #7d4fc2; --setup-primary-ink: #ffffff;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --lock: #9b8afb; --ink: #ffffff; --muted: rgba(255,255,255,.82);
+        --key: #ffffff; --key-hover: #fff8fb; --key-ink: #751f3a; --focus: #ffd84d;
+        --heart: #ef476f; --heart-dark: #e8649b; --page: #22131d; --page-ink: #ffe5f0; --page-muted: #d7adbf;
+        --paper: rgba(63,35,52,.82); --paper-border: rgba(255,204,226,.12); --accent-violet: #ad86f0; --gold: #ffd071;
+        --setup-bg: #22131d; --setup-card: #392230; --setup-ink: #ffe5f0; --setup-muted: #d7adbf; --setup-field: #2d1a26; --setup-border: #664357; --setup-primary: #ad86f0; --setup-primary-ink: #24152d;
+      }
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body { min-height: 100svh; overflow-x: hidden; font-family: "DM Sans", sans-serif; background: var(--lock); color: var(--ink); }
+    button { font: inherit; }
+    .screen { min-height: 100svh; width: 100%; }
+    .lock-screen {
+      display: flex; flex-direction: column; align-items: center;
+      background: var(--lock);
+      padding: max(24px, env(safe-area-inset-top)) 20px max(24px, env(safe-area-inset-bottom));
+    }
+    .lock-child { width: clamp(112px, 16vw, 146px); margin: -8px 0 7px; filter: drop-shadow(0 10px 9px rgba(62,28,105,.2)); transform-origin: 50% 100%; animation: childBounce 2.2s ease-in-out infinite; }
+    .gift-title { margin: 0 0 clamp(26px, 5vh, 45px); text-align: center; font-size: clamp(30px, 7.5vw, 47px); line-height: 1; font-weight: 700; letter-spacing: -.045em; white-space: nowrap; }
+    .gift-title .accent { color: #f04471; }
+    .lock-panel { width: min(100%, 356px); text-align: center; }
+    .setup-shortcut { position: fixed; right: max(14px, env(safe-area-inset-right)); bottom: max(14px, env(safe-area-inset-bottom)); z-index: 5; display: grid; place-items: center; width: 38px; height: 38px; padding: 0; border: 1px solid rgba(255,255,255,.3); border-radius: 50%; background: rgba(71,47,134,.2); color: rgba(255,255,255,.76); font-size: 17px; line-height: 1; cursor: pointer; box-shadow: 0 5px 14px rgba(50,28,103,.12); -webkit-tap-highlight-color: transparent; }
+    .setup-shortcut:hover { background: rgba(71,47,134,.32); color: #fff; }
+    .setup-shortcut:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; color: #fff; }
+    .setup-shortcut:active { transform: scale(.93); }
+    #lockChild, #giftTitleTrigger { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+    #lockChild:focus-visible, #giftTitleTrigger:focus-visible { outline: 3px solid var(--focus); outline-offset: 5px; border-radius: 8px; }
+    h1, p { margin-top: 0; }
+    .lock-panel h1 { font-size: clamp(27px, 7vw, 35px); line-height: 1.08; margin-bottom: 11px; letter-spacing: -.035em; }
+    .instruction { color: var(--muted); font-size: 14px; line-height: 1.5; margin-bottom: 24px; }
+    .dots { display: flex; justify-content: center; gap: 13px; margin-bottom: 29px; }
+    .dot { position: relative; width: 42px; height: 48px; border-radius: 14px; border: 2px solid rgba(255,255,255,.72); background: rgba(255,255,255,.1); transition: background .16s ease, transform .16s ease, border-color .16s ease, box-shadow .16s ease; }
+    .dot::after { content: ""; position: absolute; left: 50%; top: 50%; width: 10px; height: 10px; border-radius: 50%; background: transparent; transform: translate(-50%,-50%); transition: background .16s ease, transform .16s ease; }
+    .dot.active { border-color: var(--focus); box-shadow: 0 0 0 3px rgba(255,216,77,.3); }
+    .dot.filled::after { background: #ffffff; transform: translate(-50%,-50%) scale(1.08); }
+    .keypad { display: grid; grid-template-columns: repeat(3, 72px); gap: 13px 21px; justify-content: center; }
+    .key { appearance: none; width: 72px; height: 72px; border-radius: 50%; border: 0; background: var(--key); color: var(--key-ink); font-size: 23px; font-weight: 700; cursor: pointer; box-shadow: 0 7px 15px rgba(62,28,105,.2), inset 0 -2px 0 rgba(82,27,58,.08); transition: transform .12s ease, background .12s ease, box-shadow .12s ease; -webkit-tap-highlight-color: transparent; }
+    .key:hover { background: var(--key-hover); }
+    .key:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
+    .key:active { transform: scale(.92); box-shadow: 0 3px 9px rgba(62,28,105,.17); }
+    .key.function { font-size: 27px; color: var(--key-ink); }
+    .key.submit { color: #ef365f; font-size: 28px; }
+    .key.submit:hover { background: #fff5f8; }
+    .feedback { min-height: 20px; margin-top: 14px; color: #fff1f5; font-size: 13px; font-weight: 700; opacity: 0; transition: opacity .16s ease; }
+    .feedback.show { opacity: 1; }
+    .shake { animation: shake .42s ease; }
+    @keyframes shake { 0%,100% { transform: translateX(0); } 20% { transform: translateX(-9px); } 40% { transform: translateX(8px); } 60% { transform: translateX(-6px); } 80% { transform: translateX(4px); } }
+
+    .setup-screen { display: none; background: var(--setup-bg); color: var(--setup-ink); padding: max(32px, env(safe-area-inset-top)) 18px max(40px, env(safe-area-inset-bottom)); }
+    .setup-screen.open { display: block; }
+    .setup-shell { width: min(100%, 620px); margin: 0 auto; }
+    .setup-back { appearance: none; border: 0; background: transparent; color: var(--setup-muted); padding: 8px 0; margin: 0 0 16px; font-weight: 700; cursor: pointer; }
+    .setup-back:focus-visible, .setup-button:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
+    .setup-heading { margin: 0 0 7px; font-size: clamp(31px, 8vw, 44px); line-height: 1.06; letter-spacing: -.04em; }
+    .setup-intro { margin: 0 0 24px; color: var(--setup-muted); line-height: 1.55; }
+    .setup-card { padding: clamp(20px, 5vw, 30px); border-radius: 24px 10px 24px 10px; background: var(--setup-card); border: 1px solid var(--setup-border); box-shadow: 0 18px 48px rgba(80,37,60,.12); }
+    .setup-field { margin-bottom: 19px; }
+    .setup-label { display: block; margin: 0 0 8px; color: var(--setup-ink); font-size: 14px; font-weight: 700; }
+    .setup-optional { color: var(--setup-muted); font-size: 12px; font-weight: 500; }
+    .setup-input, .setup-textarea { display: block; width: 100%; border: 1px solid var(--setup-border); border-radius: 12px 5px 12px 5px; background: var(--setup-field); color: var(--setup-ink); font: inherit; font-size: 16px; padding: 13px 14px; }
+    .setup-input:focus, .setup-textarea:focus { border-color: var(--setup-primary); outline: 3px solid color-mix(in srgb, var(--setup-primary) 22%, transparent); }
+    .setup-textarea { min-height: 140px; line-height: 1.55; resize: vertical; }
+    .letter-launch { appearance: none; display: inline-flex; align-items: center; justify-content: center; gap: 9px; width: 100%; min-height: 58px; padding: 13px 18px; border: 0; border-radius: 15px 6px 15px 6px; background: var(--setup-primary); color: var(--setup-primary-ink); font: inherit; font-size: 17px; font-weight: 700; cursor: pointer; box-shadow: 0 8px 20px color-mix(in srgb, var(--setup-primary) 23%, transparent); -webkit-tap-highlight-color: transparent; }
+    .letter-launch:active { transform: translateY(1px); box-shadow: 0 4px 10px color-mix(in srgb, var(--setup-primary) 18%, transparent); }
+    .letter-launch:focus-visible, .letter-done:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
+    .letter-editor { display: none; margin-top: 12px; padding: 14px; border: 1px solid var(--setup-border); border-radius: 15px 6px 15px 6px; background: color-mix(in srgb, var(--setup-primary) 6%, var(--setup-card)); }
+    .letter-editor.open { display: block; }
+    .letter-editor-label { display: block; margin: 0 0 8px; font-size: 13px; font-weight: 700; color: var(--setup-ink); }
+    .letter-done { appearance: none; width: 100%; min-height: 48px; margin-top: 10px; padding: 11px 16px; border: 1px solid var(--setup-border); border-radius: 12px 5px 12px 5px; background: color-mix(in srgb, var(--setup-primary) 13%, var(--setup-card)); color: var(--setup-primary); font: inherit; font-weight: 700; cursor: pointer; }
+    .letter-preview { display: none; margin-top: 12px; padding: 15px; border: 1px solid var(--setup-border); border-radius: 14px 6px 14px 6px; background: var(--setup-field); }
+    .letter-preview.show { display: block; }
+    .letter-preview strong { display: block; margin-bottom: 6px; color: var(--setup-primary); font-size: 13px; }
+    .letter-preview p { margin: 0; color: var(--setup-muted); line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .upload-box { display: grid; grid-template-columns: 104px minmax(0, 1fr); gap: 15px; align-items: center; min-height: 128px; padding: 14px; border: 1px dashed var(--setup-border); border-radius: 18px 7px 18px 7px; background: var(--setup-field); }
+    .upload-action { position: relative; display: grid; place-items: center; }
+    .photo-input { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+    .upload-plus-button { display: grid; place-items: center; width: 92px; height: 92px; border-radius: 50%; background: var(--setup-primary); color: var(--setup-primary-ink); border: 4px solid var(--setup-card); box-shadow: 0 9px 22px color-mix(in srgb, var(--setup-primary) 32%, transparent); cursor: pointer; -webkit-tap-highlight-color: transparent; user-select: none; transition: transform .12s ease, box-shadow .12s ease; }
+    .upload-plus-button:active { transform: scale(.94); box-shadow: 0 4px 12px color-mix(in srgb, var(--setup-primary) 24%, transparent); }
+    .upload-plus-icon { display: block; margin-top: -7px; font-size: 70px; font-weight: 300; line-height: 1; }
+    .photo-input:focus-visible + .upload-plus-button { outline: 3px solid var(--focus); outline-offset: 4px; }
+    .upload-preview { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 7px; width: 100%; min-height: 88px; padding: 6px; border-radius: 13px 5px 13px 5px; overflow: hidden; background: color-mix(in srgb, var(--setup-primary) 12%, var(--setup-card)); color: var(--setup-primary); font-size: 12px; font-weight: 700; text-align: center; }
+    .upload-preview.empty { display: none; }
+    .upload-preview img { width: 100%; aspect-ratio: 1; min-width: 0; object-fit: cover; border-radius: 8px 3px 8px 3px; }
+    .upload-copy strong, .upload-copy small { display: block; }
+    .upload-copy strong { margin-bottom: 5px; color: var(--setup-ink); }
+    .upload-copy small { color: var(--setup-muted); line-height: 1.45; }
+    .privacy-note { margin: 10px 2px 0; color: var(--setup-muted); font-size: 12px; line-height: 1.5; }
+    .privacy-note strong { color: var(--setup-ink); }
+    .manual-panel { display: none; margin-top: 13px; padding: 14px; border: 1px solid var(--setup-border); border-radius: 14px 6px 14px 6px; background: color-mix(in srgb, var(--setup-primary) 6%, var(--setup-card)); }
+    .manual-panel.show { display: block; }
+    .manual-panel p { margin: 0 0 11px; color: var(--setup-muted); font-size: 13px; line-height: 1.45; }
+    .manual-grid { display: grid; gap: 9px; }
+    .manual-toggle { appearance: none; margin-top: 11px; padding: 0; border: 0; background: transparent; color: var(--setup-primary); font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+    .passcode-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; }
+    .passcode-note { color: var(--setup-muted); font-size: 12px; white-space: nowrap; }
+    .setup-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 7px; }
+    .setup-button { appearance: none; min-height: 48px; border: 0; border-radius: 13px 5px 13px 5px; padding: 12px 18px; font-weight: 700; cursor: pointer; }
+    .setup-button.primary { flex: 1 1 210px; background: var(--setup-primary); color: var(--setup-primary-ink); }
+    .setup-button.secondary { flex: 0 1 auto; background: color-mix(in srgb, var(--setup-primary) 12%, var(--setup-card)); color: var(--setup-primary); border: 1px solid var(--setup-border); }
+    .setup-button[disabled] { cursor: not-allowed; opacity: .5; }
+    .setup-status { min-height: 22px; margin: 13px 0 0; color: var(--setup-muted); font-size: 13px; line-height: 1.45; }
+    .setup-status.error { color: #c53d61; font-weight: 700; }
+    .upload-recovery { display: none; flex-wrap: wrap; gap: 9px; margin-top: 10px; }
+    .upload-recovery.show { display: flex; }
+    .upload-recovery .setup-button { min-height: 42px; padding: 9px 14px; font-size: 13px; }
+    .generated-link { display: none; margin-top: 16px; padding: 14px; border-radius: 14px 6px 14px 6px; background: color-mix(in srgb, var(--setup-primary) 9%, var(--setup-card)); border: 1px solid var(--setup-border); }
+    .generated-link.show { display: block; }
+    .generated-link p { margin: 0 0 10px; color: var(--setup-muted); font-size: 13px; line-height: 1.5; }
+    .generated-value { width: 100%; min-height: 68px; resize: none; word-break: break-all; font: 12px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+
+    .journey-shell { width: min(100%, 560px); margin: 0 auto; }
+    .journey-step { display: none; min-height: min(72svh, 620px); align-items: center; justify-content: center; }
+    .journey-step.active { display: flex; animation: stepIn .48s cubic-bezier(.2,.8,.2,1) both; }
+    @keyframes stepIn { from { opacity: 0; transform: translateY(16px) scale(.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
+    .journey-card { width: 100%; padding: clamp(26px, 7vw, 42px); border: 1px solid var(--paper-border); border-radius: 30px 12px 30px 12px; background: var(--paper); box-shadow: 0 24px 60px rgba(92,42,69,.14); backdrop-filter: blur(10px); text-align: center; }
+    .journey-heart { display: grid; place-items: center; width: 66px; height: 66px; margin: 0 auto 19px; border-radius: 50%; background: color-mix(in srgb, var(--heart) 13%, var(--paper)); color: var(--heart-dark); font-size: 31px; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--heart) 18%, transparent); }
+    .journey-copy { margin: 0 auto 25px; max-width: 430px; color: var(--page-ink); font-size: clamp(21px, 5.6vw, 29px); font-weight: 700; line-height: 1.38; letter-spacing: -.025em; }
+    .journey-copy.pleading { color: var(--heart-dark); animation: pleaPulse .35s ease both; }
+    @keyframes pleaPulse { 0% { transform: scale(.96); } 60% { transform: scale(1.035); } 100% { transform: scale(1); } }
+    .journey-actions { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 12px; min-height: 60px; }
+    .journey-button { appearance: none; min-width: 112px; min-height: 52px; padding: 13px 24px; border: 0; border-radius: 15px 6px 15px 6px; font: inherit; font-size: 17px; font-weight: 700; cursor: pointer; transition: transform .2s ease, box-shadow .2s ease, background .2s ease; -webkit-tap-highlight-color: transparent; }
+    .journey-button.primary { background: linear-gradient(135deg, var(--heart-dark), var(--accent-violet)); color: #fff; box-shadow: 0 10px 25px rgba(140,72,157,.28); }
+    .journey-button.secondary { background: color-mix(in srgb, var(--accent-violet) 11%, var(--paper)); color: var(--page-ink); border: 1px solid var(--paper-border); }
+    .journey-button:active { transform: translateY(2px); box-shadow: none; }
+    .journey-button:focus-visible, .song-video-play:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
+    .love-yes { transform: scale(var(--yes-scale, 1)); transform-origin: center; }
+    .love-yes:active { transform: scale(var(--yes-scale, 1)) translateY(2px); }
+    .media-wrap { margin: 0 auto 22px; padding: 15px; border-radius: 22px 8px 22px 8px; background: color-mix(in srgb, var(--accent-violet) 9%, var(--paper)); border: 1px solid var(--paper-border); }
+    .song-video-shell { position: relative; width: min(100%, 290px); margin: 0 auto; border-radius: 18px 7px 18px 7px; overflow: hidden; background: #23132c; box-shadow: 0 12px 30px rgba(65,31,72,.22); }
+    .song-video-player { display: block; width: 100%; max-height: 57svh; aspect-ratio: 5 / 9; object-fit: contain; background: #23132c; }
+    .song-video-play { position: absolute; left: 50%; top: 50%; display: grid; place-items: center; width: 92px; height: 92px; padding: 0 0 0 7px; border: 3px solid rgba(255,255,255,.9); border-radius: 50%; background: linear-gradient(135deg, rgba(217,68,133,.95), rgba(126,83,201,.95)); color: #fff; font-size: 40px; line-height: 1; cursor: pointer; box-shadow: 0 14px 34px rgba(24,10,31,.42); transform: translate(-50%,-50%); transition: opacity .18s ease, transform .18s ease; }
+    .song-video-play.hidden { opacity: 0; pointer-events: none; transform: translate(-50%,-50%) scale(.86); }
+    .video-player { display: block; width: 100%; max-height: 55svh; aspect-ratio: 9 / 14; object-fit: cover; border-radius: 16px 6px 16px 6px; background: #23132c; }
+    .after-media { display: none; margin-top: 21px; }
+    .after-media.show { display: block; animation: stepIn .42s ease both; }
+    .after-media p { margin: 0 0 14px; color: var(--page-ink); font-size: clamp(18px, 4.8vw, 22px); font-weight: 700; line-height: 1.45; }
+    .video-no-reply { min-height: 70px; margin: 13px 0 0; color: var(--heart-dark); font-size: 19px; font-weight: 700; line-height: 1.3; }
+    .crying { display: block; font-size: 42px; animation: pleaPulse .35s ease both; }
+    .final-gift-content { display: none; }
+    .final-gift-content.show { display: block; animation: reveal .65s cubic-bezier(.2,.8,.2,1) both; }
+    .surprise-screen { position: relative; display: none; overflow: hidden; isolation: isolate; background: radial-gradient(circle at 10% 8%, rgba(255,160,195,.24), transparent 30%), radial-gradient(circle at 88% 76%, rgba(247,188,87,.19), transparent 30%), var(--page); color: var(--page-ink); padding: max(52px, env(safe-area-inset-top)) 22px max(48px, env(safe-area-inset-bottom)); }
+    .surprise-screen.open { display: flex; align-items: center; justify-content: center; animation: reveal .7s cubic-bezier(.2,.8,.2,1) both; }
+    @keyframes reveal { from { opacity: 0; transform: scale(.98); } to { opacity: 1; transform: scale(1); } }
+    .surprise-card { position: relative; z-index: 3; width: min(100%, 680px); text-align: center; }
+    .tiny-line { font-size: 13px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--heart-dark); margin-bottom: 12px; }
+    .gift-reveal-title { font-family: "Pacifico", cursive; font-size: clamp(48px, 12vw, 82px); line-height: 1.08; color: var(--heart-dark); margin: 0 0 22px; font-weight: 400; text-shadow: 0 4px 0 rgba(255,255,255,.55); }
+    .celebration-stage { display: flex; align-items: flex-end; justify-content: center; gap: 12px; margin: 0 auto 26px; }
+    .photo-gift-section { width: min(100%, 555px); margin: 0 auto 24px; }
+    .gift-photo-card { position: relative; padding: 13px 13px 17px; border-radius: 28px 12px 28px 12px; background: var(--paper); border: 1px solid var(--paper-border); box-shadow: 0 18px 48px rgba(92,42,69,.12); backdrop-filter: blur(7px); }
+    .gift-photo-card::before, .gift-photo-card::after { content: ""; position: absolute; z-index: 2; width: 42px; height: 42px; pointer-events: none; }
+    .gift-photo-card::before { left: 6px; top: 6px; border-left: 3px solid var(--gold); border-top: 3px solid var(--gold); border-radius: 17px 0 0 0; }
+    .gift-photo-card::after { right: 6px; bottom: 6px; border-right: 3px solid var(--heart); border-bottom: 3px solid var(--heart); border-radius: 0 0 17px 0; }
+    .photo-gallery { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; overflow: hidden; border-radius: 20px 7px 20px 7px; }
+    .photo-gallery img { display: block; width: 100%; aspect-ratio: 1 / 1; min-width: 0; object-fit: cover; background: color-mix(in srgb, var(--heart) 8%, var(--paper)); }
+    .photo-gallery.three img:first-child { grid-column: 1 / -1; aspect-ratio: 1.7 / 1; }
+    .photo-gallery.one img { grid-column: 1 / -1; aspect-ratio: 1.55 / 1; }
+    .photo-gallery.hidden { display: none; }
+    .photo-frame { position: relative; display: grid; place-items: center; min-height: clamp(220px, 58vw, 340px); overflow: hidden; border-radius: 20px 7px 20px 7px; background: linear-gradient(145deg, rgba(239,71,111,.11), rgba(158,123,220,.15)); border: 1px solid var(--paper-border); }
+    .photo-frame.hidden { display: none; }
+    .gift-placeholder { position: relative; width: 100%; min-height: clamp(220px, 58vw, 340px); display: grid; place-items: center; overflow: hidden; background: radial-gradient(circle at 50% 38%, rgba(255,255,255,.9), rgba(255,255,255,.2) 35%, transparent 62%), linear-gradient(145deg, rgba(255,126,167,.18), rgba(158,123,220,.2)); }
+    .gift-placeholder::before, .gift-placeholder::after { content: ""; position: absolute; width: 90px; height: 108px; border-radius: 50%; opacity: .7; box-shadow: inset -12px -10px 0 rgba(69,20,45,.07); }
+    .gift-placeholder::before { left: 9%; top: 12%; background: #ff87ad; transform: rotate(-7deg); }
+    .gift-placeholder::after { right: 9%; top: 16%; background: #a889df; transform: rotate(8deg); }
+    .placeholder-art { position: relative; z-index: 2; display: grid; place-items: center; width: min(72%, 290px); aspect-ratio: 1; border-radius: 50%; background: rgba(255,255,255,.68); box-shadow: 0 18px 38px rgba(92,42,69,.12); }
+    .placeholder-gift { position: relative; width: 130px; height: 105px; border-radius: 8px 8px 20px 20px; background: linear-gradient(90deg, #ef668f 0 43%, #ff8eb3 43% 57%, #ef668f 57%); box-shadow: 0 13px 20px rgba(92,42,69,.16); }
+    .placeholder-gift::before { content: ""; position: absolute; left: -9px; right: -9px; top: -15px; height: 25px; border-radius: 9px; background: linear-gradient(90deg, #e65382 0 43%, #ffd071 43% 57%, #e65382 57%); }
+    .placeholder-gift::after { content: "♥"; position: absolute; left: 50%; top: 50%; transform: translate(-50%,-42%); color: #fff4f8; font-size: 45px; text-shadow: 0 3px 0 rgba(120,37,75,.1); }
+    .placeholder-bow { position: absolute; z-index: 3; left: 50%; top: -49px; width: 24px; height: 29px; background: var(--gold); border-radius: 50%; transform: translateX(-50%); }
+    .placeholder-bow::before, .placeholder-bow::after { content: ""; position: absolute; top: 3px; width: 42px; height: 27px; background: var(--gold); }
+    .placeholder-bow::before { right: 16px; border-radius: 50% 8px 50% 50%; transform: rotate(12deg); }
+    .placeholder-bow::after { left: 16px; border-radius: 8px 50% 50% 50%; transform: rotate(-12deg); }
+    .placeholder-sparkle { position: absolute; z-index: 3; color: var(--gold); font-size: 30px; line-height: 1; }
+    .placeholder-sparkle.one { left: 19%; top: 22%; } .placeholder-sparkle.two { right: 18%; bottom: 22%; color: var(--heart); font-size: 24px; }
+    .gift-message { position: relative; z-index: 3; margin: 15px 9px 6px; color: var(--page-ink); font-family: "Pacifico", cursive; font-size: clamp(19px, 4.7vw, 25px); line-height: 1.5; overflow-wrap: anywhere; }
+    .gift-mascot { width: 190px; flex: 0 1 190px; filter: drop-shadow(0 12px 10px rgba(74,33,56,.14)); transform-origin: 50% 100%; animation: childBounce 2.2s ease-in-out infinite; }
+    .child-art svg { display: block; width: 100%; height: auto; overflow: visible; }
+    @keyframes childBounce { 0%,100% { transform: translateY(0) rotate(-1deg); } 50% { transform: translateY(-7px) rotate(1deg); } }
+    .message-card { max-width: 555px; margin: 0 auto; padding: 24px 26px; background: var(--paper); border: 1px solid var(--paper-border); border-radius: 23px 10px 23px 10px; box-shadow: 0 18px 48px rgba(92,42,69,.1); backdrop-filter: blur(7px); }
+    .message-card p { font-size: clamp(16px, 4vw, 18px); line-height: 1.7; margin: 0; color: var(--page-muted); }
+    .message-card strong { color: var(--page-ink); }
+    .signature { display: block; margin-top: 13px; color: var(--heart-dark); font-family: "Pacifico", cursive; font-size: 21px; font-weight: 400; }
+    .balloon { position: absolute; z-index: 1; width: 58px; height: 70px; border-radius: 50% 50% 47% 47%; opacity: .82; animation: float 6s ease-in-out infinite; box-shadow: inset -10px -8px 0 rgba(69,20,45,.09); }
+    .balloon::before { content: ""; position: absolute; left: calc(50% - 5px); bottom: -8px; border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 9px solid currentColor; }
+    .balloon::after { content: ""; position: absolute; left: 50%; top: calc(100% + 7px); height: 90px; width: 1px; background: rgba(102,58,82,.38); transform: rotate(4deg); transform-origin: top; }
+    .b1 { background: #ff7da7; color: #ff7da7; left: 5%; top: 16%; animation-delay: -.8s; } .b2 { background: #9e7bdc; color: #9e7bdc; right: 7%; top: 10%; width: 50px; height: 62px; animation-delay: -2.7s; } .b3 { background: #f7bd5e; color: #f7bd5e; left: 10%; bottom: 14%; width: 45px; height: 57px; animation-delay: -4.2s; } .b4 { background: #68c7b1; color: #68c7b1; right: 6%; bottom: 18%; width: 46px; height: 58px; animation-delay: -1.8s; }
+    @keyframes float { 0%,100% { transform: translateY(0) rotate(-2deg); } 50% { transform: translateY(-22px) rotate(3deg); } }
+    .confetti-layer { position: absolute; inset: 0; overflow: hidden; z-index: 2; pointer-events: none; }
+    .confetti { position: absolute; top: -12%; width: 9px; height: 17px; border-radius: 2px; animation: fall var(--time) linear infinite; animation-delay: var(--delay); opacity: .9; }
+    @keyframes fall { 0% { transform: translate3d(0,-10vh,0) rotate(0); } 100% { transform: translate3d(var(--drift),115vh,0) rotate(720deg); } }
+    @media (max-width: 440px) {
+      .lock-screen { padding-left: 18px; padding-right: 18px; } .lock-child { width: 116px; margin-top: -10px; margin-bottom: 4px; } .gift-title { margin-bottom: clamp(22px, 4vh, 34px); } .keypad { grid-template-columns: repeat(3, 68px); gap: 12px 18px; } .key { width: 68px; height: 68px; }
+      .surprise-screen { padding-left: 18px; padding-right: 18px; } .balloon { opacity: .58; } .b1 { left: -8px; top: 9%; } .b2 { right: -7px; top: 18%; } .b3 { left: -10px; bottom: 10%; } .b4 { right: -8px; bottom: 14%; } .message-card { padding: 21px 19px; }
+      .celebration-stage { gap: 0; margin-left: -8px; margin-right: -8px; } .gift-mascot { width: 145px; flex-basis: 145px; }
+      .upload-box { grid-template-columns: 94px minmax(0, 1fr); padding: 12px; gap: 12px; } .upload-plus-button { width: 84px; height: 84px; } .upload-plus-icon { font-size: 64px; } .upload-preview { width: 100%; min-height: 70px; } .passcode-row { grid-template-columns: 1fr; } .passcode-note { white-space: normal; } .setup-button.secondary { flex: 1 1 130px; }
+    }
+    @media (max-height: 720px) {
+      .lock-screen { padding-top: 10px; padding-bottom: 10px; } .lock-child { width: 88px; margin: -10px 0 0; } .gift-title { margin-bottom: 16px; font-size: 29px; } .lock-panel h1 { font-size: 26px; } .instruction { margin-bottom: 14px; } .dots { margin-bottom: 17px; } .dot { width: 38px; height: 42px; } .keypad { gap: 9px 17px; } .key { width: 59px; height: 59px; } .feedback { margin-top: 8px; }
+    }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; } }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="screen lock-screen" id="lockScreen" aria-labelledby="lockTitle">
+      <div class="lock-child child-art" id="lockChild" role="button" tabindex="0" aria-label="Cute gift illustration. Tap three times to open Gift Setup"></div>
+      <h2 class="gift-title" id="giftTitleTrigger" role="button" tabindex="0" aria-label="Something for you. Tap three times to open Gift Setup"><span>Something</span> <span class="accent">for you</span></h2>
+      <div class="lock-panel" id="lockPanel">
+        <h1 id="lockTitle">Enter a passcode</h1>
+        <p class="instruction">Enter the 4-digit secret passcode <span aria-hidden="true">♥</span></p>
+        <div class="dots" id="dots" aria-label="0 of 4 digits entered"><span class="dot active"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+        <div class="keypad" aria-label="Passcode keypad">
+          <button class="key" type="button" data-digit="1">1</button><button class="key" type="button" data-digit="2">2</button><button class="key" type="button" data-digit="3">3</button>
+          <button class="key" type="button" data-digit="4">4</button><button class="key" type="button" data-digit="5">5</button><button class="key" type="button" data-digit="6">6</button>
+          <button class="key" type="button" data-digit="7">7</button><button class="key" type="button" data-digit="8">8</button><button class="key" type="button" data-digit="9">9</button>
+          <button class="key function" id="deleteKey" type="button" aria-label="Delete last digit">⌫</button>
+          <button class="key" type="button" data-digit="0">0</button><button class="key submit" id="unlockKey" type="button" aria-label="Unlock surprise">❤</button>
+        </div>
+        <div class="feedback" id="feedback" role="status" aria-live="polite">Oops, that’s not the secret code</div>
+      </div>
+      <button class="setup-shortcut" id="setupShortcut" type="button" aria-label="Open Gift Setup" title="Gift Setup">⚙️</button>
+    </section>
+
+    <section class="screen setup-screen" id="setupScreen" aria-labelledby="setupHeading" aria-hidden="true">
+      <div class="setup-shell">
+        <button class="setup-back" id="setupBack" type="button">← Back to lock screen</button>
+        <h2 class="setup-heading" id="setupHeading">Gift Setup</h2>
+        <p class="setup-intro">Add 3 or 4 photos, write your paragraph, then make a short gift link you can send in Messenger.</p>
+        <form class="setup-card" id="setupForm" novalidate>
+          <div class="setup-field">
+            <label class="setup-label" for="photoInput">Gift photos <span class="setup-optional">(3–4 photos)</span></label>
+            <div class="upload-box">
+              <div class="upload-action">
+                <input class="photo-input" id="photoInput" type="file" accept="image/*" multiple aria-describedby="uploadHint" />
+                <label class="upload-plus-button" for="photoInput" aria-label="Add 3 or 4 photos from your device">
+                  <span class="upload-plus-icon" aria-hidden="true">+</span>
+                </label>
+              </div>
+              <span class="upload-copy"><strong id="uploadTitle">Tap + to add 3 or 4 photos</strong><small id="uploadHint">Choose them together from your gallery or files. Photos upload automatically.</small></span>
+              <span class="upload-preview empty" id="uploadPreview" aria-live="polite"><span id="previewEmpty">Choose<br />photos</span></span>
+            </div>
+            <p class="privacy-note"><strong>Privacy:</strong> Your photos will be uploaded to Catbox or, if needed, Uguu. Anyone who knows a photo link can view it.</p>
+            <button class="manual-toggle" id="manualToggle" type="button">Use image links instead</button>
+            <div class="manual-panel" id="manualPanel">
+              <p>If an upload fails, paste 3 or 4 direct image links here.</p>
+              <div class="manual-grid">
+                <input class="setup-input manual-url" type="url" inputmode="url" placeholder="Photo 1 URL" aria-label="Photo 1 URL" />
+                <input class="setup-input manual-url" type="url" inputmode="url" placeholder="Photo 2 URL" aria-label="Photo 2 URL" />
+                <input class="setup-input manual-url" type="url" inputmode="url" placeholder="Photo 3 URL" aria-label="Photo 3 URL" />
+                <input class="setup-input manual-url" type="url" inputmode="url" placeholder="Photo 4 URL (optional)" aria-label="Photo 4 URL, optional" />
+              </div>
+            </div>
+          </div>
+          <div class="setup-field">
+            <label class="setup-label" for="recipientName">Recipient’s name <span class="setup-optional">(optional)</span></label>
+            <input class="setup-input" id="recipientName" type="text" maxlength="50" autocomplete="off" placeholder="Name" />
+          </div>
+          <div class="setup-field">
+            <span class="setup-label">Your paragraph</span>
+            <button class="letter-launch" id="writeLetterButton" type="button" aria-expanded="false" aria-controls="letterEditor">✍️ Write Letter</button>
+            <div class="letter-editor" id="letterEditor">
+              <label class="letter-editor-label" for="giftMessage">Write your letter</label>
+              <textarea class="setup-textarea" id="giftMessage" maxlength="1500" placeholder="Write your sweet message here…">You make ordinary moments feel magical, and I’m so lucky to have you in my life. I hope every day brings you happiness, gentle surprises, and all the warmth your heart deserves.</textarea>
+              <button class="letter-done" id="letterDone" type="button">Done</button>
+            </div>
+            <div class="letter-preview" id="letterPreview" aria-live="polite">
+              <strong>Letter preview</strong>
+              <p id="letterPreviewText"></p>
+            </div>
+          </div>
+          <div class="setup-field">
+            <label class="setup-label" for="setupPasscode">4-digit passcode</label>
+            <div class="passcode-row">
+              <input class="setup-input" id="setupPasscode" type="text" value="1234" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="off" aria-describedby="passcodeNote" />
+              <span class="passcode-note" id="passcodeNote">Exactly 4 digits</span>
+            </div>
+          </div>
+          <div class="setup-actions">
+            <button class="setup-button primary" id="generateGift" type="submit">Gift Link Banao</button>
+          </div>
+          <p class="setup-status" id="setupStatus" role="status" aria-live="polite"></p>
+          <div class="upload-recovery" id="uploadRecovery">
+            <button class="setup-button secondary" id="retryUpload" type="button">Retry photo upload</button>
+            <button class="setup-button secondary" id="useLinksAfterFailure" type="button">Use image links instead</button>
+          </div>
+          <div class="generated-link" id="generatedLink">
+            <p>Your short gift link is ready. Copy it and send it in Messenger.</p>
+            <textarea class="setup-input generated-value" id="generatedValue" readonly aria-label="Personalized gift link"></textarea>
+            <div class="setup-actions">
+              <button class="setup-button secondary" id="selectLink" type="button">Select Link</button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <section class="screen surprise-screen" id="surpriseScreen" aria-labelledby="giftRevealTitle" aria-hidden="true">
+      <div class="confetti-layer" id="confetti" aria-hidden="true"></div>
+      <span class="balloon b1" aria-hidden="true"></span><span class="balloon b2" aria-hidden="true"></span><span class="balloon b3" aria-hidden="true"></span><span class="balloon b4" aria-hidden="true"></span>
+      <div class="surprise-card">
+        <div class="journey-shell" id="journeyShell">
+          <section class="journey-step active" id="journeyStep1" aria-labelledby="voicePromptText">
+            <div class="journey-card">
+              <div class="journey-heart" aria-hidden="true">♥</div>
+              <p class="journey-copy" id="voicePromptText">Apnar jonno ekti voice ache, sunte chan? 🎤</p>
+              <div class="journey-actions">
+                <button class="journey-button primary" id="voiceYes" type="button">Yes</button>
+                <button class="journey-button secondary" id="voiceNo" type="button">No</button>
+              </div>
+            </div>
+          </section>
+
+          <section class="journey-step" id="journeyStep2" aria-labelledby="songVideoStepText" aria-hidden="true">
+            <div class="journey-card">
+              <p class="journey-copy" id="songVideoStepText">Apnar jonno gaaner video ta dekhun 🎤</p>
+              <div class="media-wrap">
+                <div class="song-video-shell">
+                  <video class="song-video-player" id="giftSongVideo" controls playsinline preload="metadata">
+                    <source src="assets/gift-song-video.mp4" type="video/mp4" />
+                  </video>
+                  <button class="song-video-play" id="songVideoPlay" type="button" aria-label="Gaaner video play korun">▶</button>
+                </div>
+              </div>
+              <div class="after-media" id="songVideoAfter">
+                <p>Apnar valo lagle next chapun 👇</p>
+                <button class="journey-button primary" id="songVideoNext" type="button">Next</button>
+              </div>
+            </div>
+          </section>
+
+          <section class="journey-step" id="journeyStep3" aria-labelledby="loveCheckText" aria-hidden="true">
+            <div class="journey-card">
+              <div class="journey-heart" aria-hidden="true">❤️</div>
+              <p class="journey-copy" id="loveCheckText">Apni ki continue korte chan? Korle apni shihab ke valobashen! ❤️</p>
+              <div class="journey-actions">
+                <button class="journey-button primary love-yes" id="loveYes" type="button">Yes</button>
+                <button class="journey-button secondary" id="loveNo" type="button">No</button>
+              </div>
+            </div>
+          </section>
+
+          <section class="journey-step" id="journeyStep4" aria-labelledby="videoStepText" aria-hidden="true">
+            <div class="journey-card">
+              <p class="journey-copy" id="videoStepText">Apnar jonno video ta dekhun 🎬</p>
+              <div class="media-wrap">
+                <video class="video-player" id="giftVideo" controls playsinline preload="metadata">
+                  <source src="assets/gift-video.mp4" type="video/mp4" />
+                </video>
+              </div>
+              <div class="after-media" id="videoAfter">
+                <p>Apnar ki video ta valo lagse? Lagle yes chapun, na valo lagle no 🥺</p>
+                <div class="journey-actions">
+                  <button class="journey-button primary" id="videoYes" type="button">Yes</button>
+                  <button class="journey-button secondary" id="videoNo" type="button">No</button>
+                </div>
+                <div class="video-no-reply" id="videoNoReply" aria-live="polite"></div>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <div class="final-gift-content" id="finalGiftContent">
+        <p class="tiny-line" id="tinyLine">A little surprise, just for you</p>
+        <h2 class="gift-reveal-title" id="giftRevealTitle">Something for you</h2>
+        <div class="celebration-stage">
+          <div class="gift-mascot child-art" role="img" aria-label="A cute wrapped gift with a heart tag and sparkles">
+            <svg viewBox="0 0 220 220" aria-hidden="true">
+              <ellipse cx="110" cy="200" rx="78" ry="12" fill="rgba(86,38,66,.13)"/>
+              <path d="M49 92h122v95c0 8-6 14-14 14H63c-8 0-14-6-14-14Z" fill="#ef668f"/>
+              <path d="M95 92h30v109H95Z" fill="#ffd071"/>
+              <rect x="38" y="72" width="144" height="34" rx="10" fill="#ff8eb3"/>
+              <path d="M95 72h30v34H95Z" fill="#f7bc57"/>
+              <path d="M109 71C88 70 73 62 72 49c-1-11 10-18 21-12 10 5 15 19 16 34Z" fill="#f7bc57"/>
+              <path d="M111 71c21-1 36-9 37-22 1-11-10-18-21-12-10 5-15 19-16 34Z" fill="#ffd071"/>
+              <path d="M95 142c8 11 22 11 30 0" fill="none" stroke="#fff4f8" stroke-width="6" stroke-linecap="round"/>
+              <circle cx="82" cy="129" r="5" fill="#fff4f8"/><circle cx="138" cy="129" r="5" fill="#fff4f8"/>
+              <path d="M165 37l4 10 10 4-10 4-4 10-4-10-10-4 10-4Z" fill="#ffd071"/>
+              <path d="M43 42l3 7 7 3-7 3-3 7-3-7-7-3 7-3Z" fill="#fff4f8"/>
+              <path d="M168 152c16-8 24 12 8 24-5 4-8 5-8 5s-3-1-8-5c-16-12-8-32 8-24Z" fill="#fff4f8"/>
+            </svg>
+          </div>
+        </div>
+        <div class="photo-gift-section">
+          <div class="gift-photo-card">
+            <div class="photo-gallery hidden" id="photoGallery" aria-label="Gift photo gallery"></div>
+            <div class="photo-frame" id="photoFrame" role="img" aria-label="A wrapped gift surrounded by balloons and sparkles">
+              <div class="gift-placeholder" id="giftPlaceholder">
+                <span class="placeholder-sparkle one" aria-hidden="true">✦</span>
+                <span class="placeholder-sparkle two" aria-hidden="true">✦</span>
+                <div class="placeholder-art" aria-hidden="true">
+                  <div class="placeholder-gift"><span class="placeholder-bow"></span></div>
+                </div>
+              </div>
+            </div>
+            <p class="gift-message" id="giftCaption">Ei chotto surprise ta shudhu tomar jonno ❤️</p>
+          </div>
+        </div>
+        <div class="message-card">
+          <p id="mainMessage">You make ordinary moments feel magical, and I’m so lucky to have you in my life. I hope every day brings you happiness, gentle surprises, and all the warmth your heart deserves.</p>
+          <span class="signature" id="signature">With all my love ♥</span>
+        </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    (function () {
+      var SHARE_BASE = window.location.origin + window.location.pathname;
+      var CATBOX_API = "https://catbox.moe/user/api.php";
+      var UGUU_API = "https://uguu.se/upload.php";
+      var UPLOAD_TIMEOUT_MS = 25000;
+      var DEFAULT_MESSAGE = "You make ordinary moments feel magical, and I’m so lucky to have you in my life. I hope every day brings you happiness, gentle surprises, and all the warmth your heart deserves.";
+      var SECRET_PASSCODE = "1234";
+      var currentConfig = { v: 2, n: "", m: DEFAULT_MESSAGE, p: "1234", u: [] };
+      var uploadedUrls = [];
+      var photoProcessing = false;
+      var lastSelectedFiles = [];
+      var entered = "";
+      var checking = false;
+      var surpriseChildArt = document.querySelector(".gift-mascot svg");
+      document.getElementById("lockChild").appendChild(surpriseChildArt.cloneNode(true));
+
+      var lockPanel = document.getElementById("lockPanel");
+      var lockScreen = document.getElementById("lockScreen");
+      var setupScreen = document.getElementById("setupScreen");
+      var surpriseScreen = document.getElementById("surpriseScreen");
+      var dots = Array.prototype.slice.call(document.querySelectorAll(".dot"));
+      var dotsGroup = document.getElementById("dots");
+      var feedback = document.getElementById("feedback");
+      var setupStatus = document.getElementById("setupStatus");
+      var uploadRecovery = document.getElementById("uploadRecovery");
+      var generatedLink = document.getElementById("generatedLink");
+      var generatedValue = document.getElementById("generatedValue");
+      var photoInput = document.getElementById("photoInput");
+      var uploadPreview = document.getElementById("uploadPreview");
+      var uploadTitle = document.getElementById("uploadTitle");
+      var uploadHint = document.getElementById("uploadHint");
+      var manualPanel = document.getElementById("manualPanel");
+      var manualUrls = Array.prototype.slice.call(document.querySelectorAll(".manual-url"));
+      var writeLetterButton = document.getElementById("writeLetterButton");
+      var letterEditor = document.getElementById("letterEditor");
+      var letterPreview = document.getElementById("letterPreview");
+      var letterPreviewText = document.getElementById("letterPreviewText");
+      var giftMessage = document.getElementById("giftMessage");
+      var journeyShell = document.getElementById("journeyShell");
+      var journeySteps = Array.prototype.slice.call(document.querySelectorAll(".journey-step"));
+      var giftSongVideo = document.getElementById("giftSongVideo");
+      var songVideoPlay = document.getElementById("songVideoPlay");
+      var giftVideo = document.getElementById("giftVideo");
+      var songVideoAfter = document.getElementById("songVideoAfter");
+      var videoAfter = document.getElementById("videoAfter");
+      var finalGiftContent = document.getElementById("finalGiftContent");
+      var loveNoCount = 0;
+      var voiceNoCount = 0;
+
+      function encodeConfig(config) {
+        var bytes = new TextEncoder().encode(JSON.stringify(config));
+        var binary = "";
+        for (var i = 0; i < bytes.length; i += 32768) {
+          binary += String.fromCharCode.apply(null, bytes.subarray(i, i + 32768));
+        }
+        return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+      }
+      function decodeConfig(value) {
+        var normalized = value.replace(/-/g, "+").replace(/_/g, "/");
+        while (normalized.length % 4) normalized += "=";
+        var binary = atob(normalized);
+        var bytes = new Uint8Array(binary.length);
+        for (var i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+        return JSON.parse(new TextDecoder().decode(bytes));
+      }
+      function isSafeImageUrl(value) {
+        try {
+          var parsed = new URL(value);
+          return parsed.protocol === "https:" && value.length <= 700;
+        } catch (error) {
+          return false;
+        }
+      }
+      function validConfig(config) {
+        return config && config.v === 2 && typeof config.n === "string" && typeof config.m === "string" && /^[0-9]{4}$/.test(config.p) && Array.isArray(config.u) && config.u.length >= 3 && config.u.length <= 4 && config.u.every(isSafeImageUrl) && config.n.length <= 50 && config.m.length <= 1500;
+      }
+      function renderPreview(urls) {
+        uploadPreview.innerHTML = "";
+        if (!urls.length) {
+          uploadPreview.classList.add("empty");
+          var empty = document.createElement("span");
+          empty.innerHTML = "Choose<br>photos";
+          uploadPreview.appendChild(empty);
+          return;
+        }
+        uploadPreview.classList.remove("empty");
+        urls.forEach(function (url, index) {
+          var image = document.createElement("img");
+          image.src = url;
+          image.alt = "Selected photo " + (index + 1);
+          uploadPreview.appendChild(image);
+        });
+      }
+      function renderGallery(urls, name) {
+        var gallery = document.getElementById("photoGallery");
+        var frame = document.getElementById("photoFrame");
+        gallery.innerHTML = "";
+        gallery.className = "photo-gallery";
+        if (!urls.length) {
+          gallery.classList.add("hidden");
+          frame.classList.remove("hidden");
+          return;
+        }
+        gallery.classList.add(urls.length === 3 ? "three" : (urls.length === 1 ? "one" : "four"));
+        frame.classList.add("hidden");
+        urls.forEach(function (url, index) {
+          var image = document.createElement("img");
+          image.src = url;
+          image.alt = name ? "Gift photo " + (index + 1) + " for " + name : "Gift photo " + (index + 1);
+          image.loading = "eager";
+          gallery.appendChild(image);
+        });
+      }
+      function applyConfig(config) {
+        if (!validConfig(config)) return;
+        currentConfig = config;
+        SECRET_PASSCODE = config.p;
+        uploadedUrls = config.u.slice();
+        document.getElementById("recipientName").value = config.n;
+        giftMessage.value = config.m;
+        letterPreviewText.textContent = config.m;
+        letterPreview.classList.add("show");
+        document.getElementById("setupPasscode").value = config.p;
+        var title = document.getElementById("giftRevealTitle");
+        var tinyLine = document.getElementById("tinyLine");
+        var caption = document.getElementById("giftCaption");
+        if (config.n) {
+          title.textContent = "For " + config.n + " ♥";
+          tinyLine.textContent = "A little surprise for " + config.n;
+          caption.textContent = "Made especially for " + config.n + " ♥";
+        } else {
+          title.textContent = "Something for you";
+          tinyLine.textContent = "A little surprise, just for you";
+          caption.textContent = "Ei chotto surprise ta shudhu tomar jonno ❤️";
+        }
+        document.getElementById("mainMessage").textContent = config.m || DEFAULT_MESSAGE;
+        renderGallery(config.u, config.n);
+        renderPreview(config.u);
+        uploadTitle.textContent = config.u.length + " photos ready";
+        uploadHint.textContent = "Choose 3 or 4 photos again to replace them.";
+        manualUrls.forEach(function (input, index) { input.value = config.u[index] || ""; });
+      }
+      function loadHashConfig() {
+        var match = window.location.hash.match(/^#gift=([A-Za-z0-9_-]+)$/);
+        if (!match) return;
+        try {
+          var config = decodeConfig(match[1]);
+          if (validConfig(config)) applyConfig(config);
+        } catch (error) {
+          return;
+        }
+      }
+
+      function updateDots() {
+        dots.forEach(function (dot, index) {
+          dot.classList.toggle("filled", index < entered.length);
+          dot.classList.toggle("active", index === Math.min(entered.length, 3));
+        });
+        dotsGroup.setAttribute("aria-label", entered.length + " of 4 digits entered");
+      }
+      function addDigit(digit) {
+        if (checking || entered.length >= 4) return;
+        feedback.classList.remove("show");
+        entered += digit; updateDots();
+        if (entered.length === 4) { checking = true; window.setTimeout(checkPasscode, 180); }
+      }
+      function deleteDigit() {
+        if (checking || !entered.length) return;
+        entered = entered.slice(0, -1); feedback.classList.remove("show"); updateDots();
+      }
+      function checkPasscode() {
+        if (entered.length !== 4) { checking = false; return; }
+        if (entered === SECRET_PASSCODE) { unlock(); }
+        else {
+          lockPanel.classList.remove("shake"); void lockPanel.offsetWidth; lockPanel.classList.add("shake"); feedback.classList.add("show");
+          window.setTimeout(function () { entered = ""; checking = false; updateDots(); }, 430);
+        }
+      }
+      function showJourneyStep(number) {
+        journeySteps.forEach(function (step, index) {
+          var active = index === number - 1;
+          step.classList.toggle("active", active);
+          step.setAttribute("aria-hidden", active ? "false" : "true");
+        });
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        var activeStep = document.getElementById("journeyStep" + number);
+        var focusTarget = activeStep.querySelector("button, video, audio");
+        if (focusTarget) window.setTimeout(function () { focusTarget.focus(); }, 120);
+      }
+      function resetJourney() {
+        voiceNoCount = 0;
+        loveNoCount = 0;
+        document.getElementById("voicePromptText").textContent = "Apnar jonno ekti voice ache, sunte chan? 🎤";
+        document.getElementById("voicePromptText").classList.remove("pleading");
+        document.getElementById("loveYes").style.setProperty("--yes-scale", "1");
+        document.getElementById("videoNoReply").innerHTML = "";
+        songVideoAfter.classList.remove("show");
+        videoAfter.classList.remove("show");
+        giftSongVideo.pause(); giftSongVideo.currentTime = 0; songVideoPlay.classList.remove("hidden");
+        giftVideo.pause(); giftVideo.currentTime = 0;
+        finalGiftContent.classList.remove("show");
+        journeyShell.style.display = "block";
+        showJourneyStep(1);
+      }
+      function unlock() {
+        lockScreen.style.display = "none"; setupScreen.classList.remove("open"); surpriseScreen.classList.add("open"); surpriseScreen.setAttribute("aria-hidden", "false"); document.title = "Something for you";
+        resetJourney();
+        document.getElementById("voicePromptText").setAttribute("tabindex", "-1"); document.getElementById("voicePromptText").focus();
+      }
+      function showFinalGift() {
+        giftVideo.pause();
+        journeyShell.style.display = "none";
+        journeySteps.forEach(function (step) { step.classList.remove("active"); step.setAttribute("aria-hidden", "true"); });
+        finalGiftContent.classList.add("show");
+        buildConfetti();
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        document.getElementById("giftRevealTitle").setAttribute("tabindex", "-1");
+        document.getElementById("giftRevealTitle").focus();
+      }
+      function buildConfetti() {
+        var layer = document.getElementById("confetti");
+        if (layer.children.length) return;
+        var colors = ["#ff6f9f", "#f5b94f", "#8f68d5", "#65c6af", "#f28573", "#ffffff"];
+        for (var i = 0; i < 34; i += 1) {
+          var piece = document.createElement("span"); piece.className = "confetti"; piece.style.left = ((i * 37) % 101) + "%"; piece.style.background = colors[i % colors.length];
+          piece.style.setProperty("--time", (5.5 + (i % 7) * .55) + "s"); piece.style.setProperty("--delay", (-1 * (i % 13) * .47) + "s"); piece.style.setProperty("--drift", ((i % 2 ? 1 : -1) * (18 + (i % 5) * 7)) + "px"); layer.appendChild(piece);
+        }
+      }
+
+      function openSetup() {
+        entered = ""; checking = false; updateDots(); feedback.classList.remove("show");
+        lockScreen.style.display = "none";
+        surpriseScreen.classList.remove("open");
+        surpriseScreen.setAttribute("aria-hidden", "true");
+        setupScreen.classList.add("open");
+        setupScreen.setAttribute("aria-hidden", "false");
+        document.title = "Gift Setup";
+        document.getElementById("setupHeading").setAttribute("tabindex", "-1");
+        document.getElementById("setupHeading").focus();
+      }
+      function closeSetup() {
+        setupScreen.classList.remove("open");
+        setupScreen.setAttribute("aria-hidden", "true");
+        lockScreen.style.display = "flex";
+        document.title = "Something for you";
+        document.getElementById("lockTitle").setAttribute("tabindex", "-1");
+        document.getElementById("lockTitle").focus();
+      }
+
+      var secretTaps = 0;
+      var secretTapTimer = 0;
+      function registerSecretTap() {
+        if (secretTaps === 0) {
+          window.clearTimeout(secretTapTimer);
+          secretTapTimer = window.setTimeout(function () { secretTaps = 0; }, 3000);
+        }
+        secretTaps += 1;
+        if (secretTaps >= 3) {
+          window.clearTimeout(secretTapTimer);
+          secretTaps = 0;
+          openSetup();
+        }
+      }
+      function enableSecretTap(element) {
+        element.addEventListener("click", registerSecretTap);
+        element.addEventListener("keydown", function (event) {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            registerSecretTap();
+          }
+        });
+      }
+      enableSecretTap(document.getElementById("giftTitleTrigger"));
+      enableSecretTap(document.getElementById("lockChild"));
+      document.getElementById("setupShortcut").addEventListener("click", openSetup);
+      document.getElementById("setupBack").addEventListener("click", closeSetup);
+      writeLetterButton.addEventListener("click", function () {
+        var isOpen = letterEditor.classList.toggle("open");
+        writeLetterButton.setAttribute("aria-expanded", isOpen ? "true" : "false");
+        if (isOpen) {
+          window.setTimeout(function () { giftMessage.focus(); }, 0);
+        }
+      });
+      document.getElementById("letterDone").addEventListener("click", function () {
+        var message = giftMessage.value.trim();
+        letterPreviewText.textContent = message || "Your letter preview will appear here.";
+        letterPreview.classList.add("show");
+        letterEditor.classList.remove("open");
+        writeLetterButton.setAttribute("aria-expanded", "false");
+        writeLetterButton.textContent = "✍️ Edit Letter";
+        writeLetterButton.focus();
+      });
+
+      function showManualPanel() {
+        manualPanel.classList.add("show");
+        manualPanel.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }
+      function readManualUrls() {
+        return manualUrls.map(function (input) { return input.value.trim(); }).filter(Boolean);
+      }
+      function fetchWithTimeout(url, options) {
+        var controller = new AbortController();
+        var timer = window.setTimeout(function () { controller.abort(); }, UPLOAD_TIMEOUT_MS);
+        options.signal = controller.signal;
+        return fetch(url, options).then(function (response) {
+          window.clearTimeout(timer);
+          return response;
+        }, function (error) {
+          window.clearTimeout(timer);
+          if (error && error.name === "AbortError") throw new Error("Upload timed out after 25 seconds");
+          throw error;
+        });
+      }
+      function uploadToCatbox(file, position) {
+        var formData = new FormData();
+        formData.append("reqtype", "fileupload");
+        formData.append("fileToUpload", file, file.name || ("gift-photo-" + position + ".jpg"));
+        return fetchWithTimeout(CATBOX_API, { method: "POST", body: formData }).then(function (response) {
+          if (!response.ok) throw new Error("Catbox upload failed");
+          return response.text();
+        }).then(function (value) {
+          var url = value.trim();
+          if (!/^https:\/\/files\.catbox\.moe\/[A-Za-z0-9._-]+$/.test(url)) throw new Error("Catbox returned an invalid link");
+          return url;
+        });
+      }
+      function uploadToUguu(file, position) {
+        var formData = new FormData();
+        formData.append("files[]", file, file.name || ("gift-photo-" + position + ".jpg"));
+        return fetchWithTimeout(UGUU_API, { method: "POST", body: formData }).then(function (response) {
+          if (!response.ok) throw new Error("Uguu upload failed");
+          return response.text();
+        }).then(function (value) {
+          var url = "";
+          try {
+            var payload = JSON.parse(value);
+            if (payload && Array.isArray(payload.files) && payload.files[0]) url = payload.files[0].url || payload.files[0].fileUrl || "";
+          } catch (error) {
+            url = value.trim();
+          }
+          try {
+            var parsed = new URL(url);
+            if (parsed.protocol !== "https:" || (parsed.hostname !== "uguu.se" && !parsed.hostname.endsWith(".uguu.se"))) throw new Error("Invalid host");
+          } catch (error) {
+            throw new Error("Uguu returned an invalid link");
+          }
+          return url;
+        });
+      }
+      function uploadOnePhoto(file, position, total) {
+        setupStatus.textContent = "Uploading photo " + position + "/" + total + " to Catbox...";
+        uploadTitle.textContent = "Uploading photo " + position + "/" + total + "...";
+        return uploadToCatbox(file, position).catch(function () {
+          setupStatus.textContent = "Catbox could not upload photo " + position + ". Trying Uguu automatically...";
+          return uploadToUguu(file, position);
+        });
+      }
+      function uploadSelectedPhotos(files) {
+        if (files.length < 3 || files.length > 4) {
+          setupStatus.textContent = "Please choose 3 or 4 photos together.";
+          setupStatus.classList.add("error");
+          photoInput.value = "";
+          return;
+        }
+        for (var i = 0; i < files.length; i += 1) {
+          if (!files[i].type || files[i].type.indexOf("image/") !== 0) {
+            setupStatus.textContent = "Every selected file must be an image.";
+            setupStatus.classList.add("error");
+            photoInput.value = "";
+            return;
+          }
+        }
+        lastSelectedFiles = files.slice();
+        photoProcessing = true;
+        uploadedUrls = [];
+        uploadRecovery.classList.remove("show");
+        generatedLink.classList.remove("show");
+        setupStatus.classList.remove("error");
+        var localPreviews = files.map(function (file) { return URL.createObjectURL(file); });
+        renderPreview(localPreviews);
+        var sequence = Promise.resolve();
+        files.forEach(function (file, index) {
+          sequence = sequence.then(function () {
+            return uploadOnePhoto(file, index + 1, files.length).then(function (url) { uploadedUrls.push(url); });
+          });
+        });
+        sequence.then(function () {
+          localPreviews.forEach(function (url) { URL.revokeObjectURL(url); });
+          renderPreview(uploadedUrls);
+          uploadTitle.textContent = uploadedUrls.length + " photos uploaded";
+          uploadHint.textContent = "All photos are ready. Tap to replace them.";
+          setupStatus.textContent = "All photos uploaded successfully.";
+          manualUrls.forEach(function (input, index) { input.value = uploadedUrls[index] || ""; });
+          uploadRecovery.classList.remove("show");
+          photoProcessing = false;
+        }).catch(function () {
+          localPreviews.forEach(function (url) { URL.revokeObjectURL(url); });
+          uploadedUrls = [];
+          renderPreview([]);
+          photoProcessing = false;
+          setupStatus.textContent = "Automatic upload failed on both Catbox and Uguu. Retry the upload, or use image links instead.";
+          setupStatus.classList.add("error");
+          uploadTitle.textContent = "Photo upload failed";
+          uploadHint.textContent = "Both upload hosts were tried. Your photos were not added.";
+          uploadRecovery.classList.add("show");
+          showManualPanel();
+        });
+      }
+      photoInput.addEventListener("change", function () {
+        if (photoInput.files && photoInput.files.length) uploadSelectedPhotos(Array.prototype.slice.call(photoInput.files));
+      });
+      document.getElementById("retryUpload").addEventListener("click", function () {
+        if (!photoProcessing && lastSelectedFiles.length) uploadSelectedPhotos(lastSelectedFiles);
+      });
+      document.getElementById("useLinksAfterFailure").addEventListener("click", function () {
+        showManualPanel();
+        manualUrls[0].focus();
+      });
+      document.getElementById("manualToggle").addEventListener("click", function () {
+        manualPanel.classList.toggle("show");
+        if (manualPanel.classList.contains("show")) manualUrls[0].focus();
+      });
+      document.getElementById("setupPasscode").addEventListener("input", function (event) {
+        event.target.value = event.target.value.replace(/\D/g, "").slice(0, 4);
+      });
+
+      document.getElementById("setupForm").addEventListener("submit", function (event) {
+        event.preventDefault();
+        setupStatus.classList.remove("error");
+        if (photoProcessing) {
+          setupStatus.textContent = "Please wait until all photos finish uploading.";
+          return;
+        }
+        var name = document.getElementById("recipientName").value.trim();
+        var message = document.getElementById("giftMessage").value.trim();
+        var passcode = document.getElementById("setupPasscode").value;
+        var fallbackUrls = readManualUrls();
+        var photoUrls = fallbackUrls.length ? fallbackUrls : uploadedUrls.slice();
+        if (photoUrls.length < 3 || photoUrls.length > 4 || !photoUrls.every(isSafeImageUrl)) {
+          setupStatus.textContent = "Add 3 or 4 valid HTTPS photo links before making the gift link.";
+          setupStatus.classList.add("error");
+          showManualPanel();
+          return;
+        }
+        if (!/^[0-9]{4}$/.test(passcode)) {
+          setupStatus.textContent = "Passcode must contain exactly 4 digits.";
+          setupStatus.classList.add("error");
+          document.getElementById("setupPasscode").focus();
+          return;
+        }
+        if (!message) message = DEFAULT_MESSAGE;
+        var config = { v: 2, n: name, m: message, p: passcode, u: photoUrls };
+        var payload = encodeConfig(config);
+        var link = SHARE_BASE + "#gift=" + payload;
+        if (link.length >= 20000) {
+          setupStatus.textContent = "This link is too long for Messenger. Shorten the paragraph and try again.";
+          setupStatus.classList.add("error");
+          return;
+        }
+        history.replaceState(null, "", "#gift=" + payload);
+        generatedValue.value = link;
+        generatedLink.classList.add("show");
+        setupStatus.textContent = "Short gift link ready — " + link.length + " characters.";
+        applyConfig(config);
+        generatedLink.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      });
+
+      document.getElementById("selectLink").addEventListener("click", function () {
+        generatedValue.focus();
+        generatedValue.select();
+        setupStatus.classList.remove("error");
+        setupStatus.textContent = "Link selected. Use Copy from your device menu, then paste it in Messenger.";
+      });
+
+      document.getElementById("voiceNo").addEventListener("click", function () {
+        voiceNoCount += 1;
+        var prompt = document.getElementById("voicePromptText");
+        prompt.classList.remove("pleading"); void prompt.offsetWidth; prompt.classList.add("pleading");
+        prompt.textContent = voiceNoCount > 1 ? "Please yes chapun, apnar jonnoi! 🥺🥺" : "Please yes chapun, apnar jonnoi! 🥺";
+      });
+      document.getElementById("voiceYes").addEventListener("click", function () { showJourneyStep(2); });
+      songVideoPlay.addEventListener("click", function () { giftSongVideo.play(); });
+      giftSongVideo.addEventListener("play", function () { songVideoPlay.classList.add("hidden"); });
+      giftSongVideo.addEventListener("pause", function () {
+        if (!giftSongVideo.ended) songVideoPlay.classList.remove("hidden");
+      });
+      giftSongVideo.addEventListener("ended", function () {
+        songVideoPlay.classList.remove("hidden");
+        songVideoAfter.classList.add("show");
+        document.getElementById("songVideoNext").focus();
+      });
+      document.getElementById("songVideoNext").addEventListener("click", function () { showJourneyStep(3); });
+      document.getElementById("loveNo").addEventListener("click", function () {
+        loveNoCount += 1;
+        var scale = Math.min(1 + loveNoCount * .24, 2.2);
+        document.getElementById("loveYes").style.setProperty("--yes-scale", String(scale));
+      });
+      document.getElementById("loveYes").addEventListener("click", function () { showJourneyStep(4); });
+      giftVideo.addEventListener("ended", function () {
+        videoAfter.classList.add("show");
+        document.getElementById("videoYes").focus();
+      });
+      document.getElementById("videoNo").addEventListener("click", function () {
+        var reply = document.getElementById("videoNoReply");
+        reply.innerHTML = '<span class="crying" aria-hidden="true">😭</span>Please yes chapun!';
+      });
+      document.getElementById("videoYes").addEventListener("click", showFinalGift);
+
+      document.querySelectorAll("[data-digit]").forEach(function (button) { button.addEventListener("click", function () { addDigit(button.getAttribute("data-digit")); }); });
+      document.getElementById("deleteKey").addEventListener("click", deleteDigit);
+      document.getElementById("unlockKey").addEventListener("click", checkPasscode);
+      lockPanel.addEventListener("animationend", function () { lockPanel.classList.remove("shake"); });
+      document.addEventListener("keydown", function (event) {
+        if (surpriseScreen.classList.contains("open") || setupScreen.classList.contains("open")) return;
+        if (/^[0-9]$/.test(event.key)) addDigit(event.key);
+        if (event.key === "Backspace" || event.key === "Delete") deleteDigit();
+        if (event.key === "Enter") checkPasscode();
+      });
+
+      loadHashConfig();
+    }());
+  </script>
+</body>
+</html>
